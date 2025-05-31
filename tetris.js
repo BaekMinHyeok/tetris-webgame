@@ -35,8 +35,12 @@ function collide(arena, piece) {
   const m = piece.shape, o = piece.pos;
   for(let y=0; y<m.length; ++y)
     for(let x=0; x<m[y].length; ++x)
-      if(m[y][x] && (arena[y+o.y] && arena[y+o.y][x+o.x])!==0)
-        return true;
+      if(m[y][x] && (
+        o.y + y >= ROWS ||
+        o.x + x < 0 ||
+        o.x + x >= COLS ||
+        (arena[o.y + y] && arena[o.y + y][o.x + x])
+      )) return true;
   return false;
 }
 
@@ -54,6 +58,7 @@ function rotate(matrix) {
 }
 
 function playerDrop() {
+  if(gameOver) return;
   piece.pos.y++;
   if(collide(arena,piece)){
     piece.pos.y--;
@@ -61,7 +66,10 @@ function playerDrop() {
     piece=randomPiece();
     if(collide(arena,piece)){
       gameOver=true;
-      alert('Game Over! Score: '+score+'\n새로고침(F5)으로 다시 시작하세요.');
+      draw();
+      setTimeout(()=>{
+        alert('Game Over! Score: '+score+'\n새로고침(F5)으로 다시 시작하세요.');
+      }, 100);
       return;
     }
     sweep();
@@ -82,11 +90,13 @@ function sweep() {
 }
 
 function playerMove(dir) {
+  if(gameOver) return;
   piece.pos.x+=dir;
   if(collide(arena,piece)) piece.pos.x-=dir;
 }
 
 function playerRotate() {
+  if(gameOver) return;
   const pos=piece.pos.x;
   rotate(piece.shape);
   let offset=1;
@@ -117,7 +127,7 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-function drawMatrix(matrix, offset, color, type) {
+function drawMatrix(matrix, offset) {
   matrix.forEach((row,y)=>row.forEach((v,x)=>{
     if(v) {
       ctx.fillStyle=COLORS[v];
@@ -132,7 +142,7 @@ function draw() {
   ctx.fillStyle='#111';
   ctx.fillRect(0,0,COLS,ROWS);
   drawMatrix(arena,{x:0,y:0});
-  drawMatrix(piece.shape,piece.pos,piece.color,piece.type);
+  drawMatrix(piece.shape,piece.pos);
 }
 
 function update(time=0) {
