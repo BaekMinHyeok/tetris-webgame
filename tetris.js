@@ -17,7 +17,7 @@ const COLORS = [null,'#0ff','#ff0','#a0f','#0f0','#f00','#00f','#fa0'];
 
 function randomPiece() {
   const typeId = Math.floor(Math.random()*7)+1;
-  const shape = SHAPES[typeId];
+  const shape = SHAPES[typeId].map(row => [...row]); // 깊은 복사
   return {
     shape,
     color: COLORS[typeId],
@@ -46,15 +46,19 @@ function collide(arena, piece) {
 
 function merge(arena, piece) {
   piece.shape.forEach((row,y)=>row.forEach((v,x)=>{
-    if(v) arena[y+piece.pos.y][x+piece.pos.x]=piece.type;
+    if(v && y+piece.pos.y>=0 && y+piece.pos.y<ROWS && x+piece.pos.x>=0 && x+piece.pos.x<COLS)
+      arena[y+piece.pos.y][x+piece.pos.x]=piece.type;
   }));
 }
 
 function rotate(matrix) {
-  for(let y=0;y<matrix.length;++y)
-    for(let x=0;x<y;++x)
-      [matrix[x][y],matrix[y][x]]=[matrix[y][x],matrix[x][y]];
-  matrix.forEach(row=>row.reverse());
+  // 깊은 복사로 회전 전후 shape가 분리되도록
+  const N = matrix.length;
+  let ret = Array.from({length:N},()=>Array(N).fill(0));
+  for(let y=0;y<N;++y)
+    for(let x=0;x<N;++x)
+      ret[x][N-1-y]=matrix[y][x];
+  return ret;
 }
 
 function playerDrop() {
@@ -97,15 +101,14 @@ function playerMove(dir) {
 
 function playerRotate() {
   if(gameOver) return;
-  const pos=piece.pos.x;
-  rotate(piece.shape);
+  const oldShape = piece.shape.map(row => [...row]);
+  piece.shape = rotate(piece.shape);
   let offset=1;
   while(collide(arena,piece)){
     piece.pos.x+=offset;
     offset=-(offset+(offset>0?1:-1));
     if(offset>piece.shape[0].length){
-      rotate(piece.shape);rotate(piece.shape);rotate(piece.shape);
-      piece.pos.x=pos;
+      piece.shape = oldShape; // 실패 시 원상복구
       return;
     }
   }
