@@ -21,7 +21,8 @@ function randomPiece() {
   return {
     shape,
     color: COLORS[typeId],
-    pos: {x: Math.floor(COLS/2)-Math.ceil(shape[0].length/2), y: 0}
+    pos: {x: Math.floor(COLS/2)-Math.ceil(shape[0].length/2), y: 0},
+    type: typeId
   };
 }
 
@@ -41,7 +42,7 @@ function collide(arena, piece) {
 
 function merge(arena, piece) {
   piece.shape.forEach((row,y)=>row.forEach((v,x)=>{
-    if(v) arena[y+piece.pos.y][x+piece.pos.x]=v;
+    if(v) arena[y+piece.pos.y][x+piece.pos.x]=piece.type;
   }));
 }
 
@@ -60,10 +61,8 @@ function playerDrop() {
     piece=randomPiece();
     if(collide(arena,piece)){
       gameOver=true;
-      alert('Game Over! Score: '+score);
-      arena=Array.from({length:ROWS},()=>Array(COLS).fill(0));
-      score=0;
-      gameOver=false;
+      alert('Game Over! Score: '+score+'\n새로고침(F5)으로 다시 시작하세요.');
+      return;
     }
     sweep();
   }
@@ -108,13 +107,20 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='ArrowRight') playerMove(1);
   else if(e.key==='ArrowDown') playerDrop();
   else if(e.key==='ArrowUp') playerRotate();
-  else if(e.key===' ') while(!gameOver) playerDrop();
+  else if(e.key===' '){
+    // 빠른 드랍: 블록이 바닥에 닿을 때까지 반복
+    while(!gameOver && !collide(arena, piece)){
+      piece.pos.y++;
+    }
+    piece.pos.y--;
+    playerDrop();
+  }
 });
 
-function drawMatrix(matrix, offset, color) {
+function drawMatrix(matrix, offset, color, type) {
   matrix.forEach((row,y)=>row.forEach((v,x)=>{
     if(v) {
-      ctx.fillStyle=color||COLORS[v];
+      ctx.fillStyle=COLORS[v];
       ctx.fillRect(x+offset.x,y+offset.y,1,1);
       ctx.strokeStyle='#222';
       ctx.strokeRect(x+offset.x,y+offset.y,1,1);
@@ -126,7 +132,7 @@ function draw() {
   ctx.fillStyle='#111';
   ctx.fillRect(0,0,COLS,ROWS);
   drawMatrix(arena,{x:0,y:0});
-  drawMatrix(piece.shape,piece.pos,piece.color);
+  drawMatrix(piece.shape,piece.pos,piece.color,piece.type);
 }
 
 function update(time=0) {
@@ -136,7 +142,7 @@ function update(time=0) {
   if(dropCounter>dropInterval) playerDrop();
   draw();
   document.querySelector('h1').textContent = 'Tetris Game | Score: '+score;
-  requestAnimationFrame(update);
+  if(!gameOver) requestAnimationFrame(update);
 }
 
 update();
